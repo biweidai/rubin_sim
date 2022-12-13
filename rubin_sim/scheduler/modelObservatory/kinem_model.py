@@ -408,6 +408,8 @@ class Kinem_model(object):
             Will be np.nan or np.inf if slew is not possible.
         """
         if filtername not in self.mounted_filters:
+            print(filtername, self.mounted_filters)
+            print('no filter')
             return np.nan
 
         # Don't trust folks to do pa calculation correctly, if both rotations set, rotSkyPos wins
@@ -473,6 +475,7 @@ class Kinem_model(object):
         telAzSlewTime = self._uamSlewTime(
             np.abs(deltaAztel), self.telaz_maxspeed_rad, self.telaz_accel_rad
         )
+        #print(not np.isfinite(telAltSlewTime).all(), not np.isfinite(telAzSlewTime).all())
         totTelTime = np.maximum(telAltSlewTime, telAzSlewTime)
 
         # Time for open loop optics correction
@@ -573,6 +576,7 @@ class Kinem_model(object):
             if (rotTelPos_ranged < self.telrot_minpos_rad) | (
                 rotTelPos_ranged > self.telrot_maxpos_rad
             ):
+                print('out of limits')
                 return np.nan
             # If there was no kwarg for starting rotator position
             if starting_rotTelPos_rad is None:
@@ -608,6 +612,8 @@ class Kinem_model(object):
             self.current_filter = filtername
             self.last_mjd = mjd
 
+        #if not np.isfinite(slewTime).all():
+        #    print('inf time')
         return slewTime
 
     def visit_time(self, observation):

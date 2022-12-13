@@ -473,7 +473,7 @@ class Coadded_depth(BaseSurveyFeature):
         if observation["filter"] == self.filtername:
             if int_rounded(observation["FWHMeff"]) <= self.FWHMeff_limit:
                 m5 = m5_flat_sed(
-                    observation["filter"],
+                    observation["filter"][0],
                     observation["skybrightness"],
                     observation["FWHMeff"],
                     observation["exptime"],

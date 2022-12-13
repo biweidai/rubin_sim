@@ -134,35 +134,43 @@ class Model_observatory(object):
 
         down_starts = []
         down_ends = []
-        for dt in sched_downtimes:
-            down_starts.append(dt["start"].mjd)
-            down_ends.append(dt["end"].mjd)
+        #for dt in sched_downtimes:
+        #    down_starts.append(dt["start"].mjd)
+        #    down_ends.append(dt["end"].mjd)
         if not ideal_conditions:
+            for dt in sched_downtimes:
+                down_starts.append(dt["start"].mjd)
+                down_ends.append(dt["end"].mjd)
             for dt in unsched_downtimes:
                 down_starts.append(dt["start"].mjd)
                 down_ends.append(dt["end"].mjd)
 
-        self.downtimes = np.array(
-            list(zip(down_starts, down_ends)),
-            dtype=list(zip(["start", "end"], [float, float])),
-        )
-        self.downtimes.sort(order="start")
-
-        # Make sure there aren't any overlapping downtimes
-        diff = self.downtimes["start"][1:] - self.downtimes["end"][0:-1]
-        while np.min(diff) < 0:
-            # Should be able to do this wihtout a loop, but this works
-            for i, dt in enumerate(self.downtimes[0:-1]):
-                if self.downtimes["start"][i + 1] < dt["end"]:
-                    new_end = np.max([dt["end"], self.downtimes["end"][i + 1]])
-                    self.downtimes[i]["end"] = new_end
-                    self.downtimes[i + 1]["end"] = new_end
-
-            good = np.where(
-                self.downtimes["end"] - np.roll(self.downtimes["end"], 1) != 0
+            self.downtimes = np.array(
+                list(zip(down_starts, down_ends)),
+                dtype=list(zip(["start", "end"], [float, float])),
             )
-            self.downtimes = self.downtimes[good]
+            self.downtimes.sort(order="start")
+
+            # Make sure there aren't any overlapping downtimes
             diff = self.downtimes["start"][1:] - self.downtimes["end"][0:-1]
+            while np.min(diff) < 0:
+                # Should be able to do this wihtout a loop, but this works
+                for i, dt in enumerate(self.downtimes[0:-1]):
+                    if self.downtimes["start"][i + 1] < dt["end"]:
+                        new_end = np.max([dt["end"], self.downtimes["end"][i + 1]])
+                        self.downtimes[i]["end"] = new_end
+                        self.downtimes[i + 1]["end"] = new_end
+
+                good = np.where(
+                    self.downtimes["end"] - np.roll(self.downtimes["end"], 1) != 0
+                )
+                self.downtimes = self.downtimes[good]
+                diff = self.downtimes["start"][1:] - self.downtimes["end"][0:-1]
+        else:
+            self.downtimes = np.array(
+                list(zip(down_starts, down_ends)),
+                dtype=list(zip(["start", "end"], [float, float])),
+            )
 
         if ideal_conditions:
             self.seeing_data = NominalSeeing()
@@ -434,6 +442,8 @@ class Model_observatory(object):
         False if in downtime
         """
 
+        if len(self.downtimes) == 0:
+            return True
         result = True
         indx = np.searchsorted(self.downtimes["start"], mjd, side="right") - 1
         if indx >= 0:
@@ -463,6 +473,7 @@ class Model_observatory(object):
         clouds = self.cloud_data(Time(mjd, format="mjd"))
 
         if clouds > self.cloud_limit:
+            print('cloud')
             passed = False
             while clouds > self.cloud_limit:
                 new_mjd = new_mjd + cloud_skip / 60.0 / 24.0
@@ -470,13 +481,16 @@ class Model_observatory(object):
         alm_indx = np.searchsorted(self.almanac.sunsets["sunset"], mjd) - 1
         # at the end of the night, advance to the next setting twilight
         if mjd > self.almanac.sunsets["sun_n12_rising"][alm_indx]:
+            print('end of night')
             passed = False
             new_mjd = self.almanac.sunsets["sun_n12_setting"][alm_indx + 1]
         if mjd < self.almanac.sunsets["sun_n12_setting"][alm_indx]:
+            print('end of night')
             passed = False
             new_mjd = self.almanac.sunsets["sun_n12_setting"][alm_indx + 1]
         # We're in a down night, advance to next night
         if not self.check_up(mjd):
+            print('down night')
             passed = False
             new_mjd = self.almanac.sunsets["sun_n12_setting"][alm_indx + 1]
         # recursive call to make sure we skip far enough ahead
@@ -562,6 +576,8 @@ class Model_observatory(object):
 
         # inf slewtime means the observation failed (probably outside alt limits)
         if ~np.all(np.isfinite(slewtime)):
+            print(self.observatory.last_alt_rad, self.observatory.last_az_rad)
+            print('inf slew time')
             return None, False
 
         observation_worked, new_mjd = self.check_mjd(
