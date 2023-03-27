@@ -322,7 +322,7 @@ class SkyModelPre(object):
                         ra_full,
                         dec_full,
                     )
-                    closest = np.where(dist == dist.min())[0]
+                    closest = [np.nanargmin(dist)]
                     for filtername in filters:
                         sbs[filtername].ravel()[mi] = np.min(
                             full_sky_sb[filtername][closest]

@@ -546,8 +546,11 @@ def _angularSeparation(long1, lat1, long2, lat2):
     if isinstance(_sum, numbers.Number):
         if _sum < 0.0:
             _sum = 0.0
+        elif _sum > 1:
+            _sum = 1.
     else:
         _sum = np.where(_sum < 0.0, 0.0, _sum)
+        _sum = np.where(_sum > 1., 1., _sum)
 
     return 2.0 * np.arcsin(np.sqrt(_sum))
 
